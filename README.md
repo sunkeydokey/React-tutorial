@@ -10,7 +10,7 @@ React란 사용자 인터페이스를 구축하기 위한 선언적 방식의 JS
 `컴포넌트`라는 독립된 코드 파편을 이용해 UI를 구성한다.  
 XML과 유사한 JSX를 사용한다. 컴포넌트를 사용해 React에 화면에 표현할 것을 알려준다. React는 데이터가 변경될 때 컴포넌트를 업데이트하여 다시 렌더링한다.
 
-```JavaScript
+```JS
 class ShoppingList extends React.Component { // React 컴포넌트 클래스 ShoppingList
   render() { // 개별 컴포넌트는 props라는 매개변수를 받아오고 render 함수를 통해 표시할 뷰 계층 구조를 반환
     return (
@@ -29,7 +29,7 @@ class ShoppingList extends React.Component { // React 컴포넌트 클래스 Sho
 
 render 함수는 화면에서 보고자 하는 내용을 반환한다. React는 설명을 전달받고 결과를 표시한다. 위의 코드는 빌드 시점에 다음과 같이 변화한다.
 
-```JavaScript
+```JS
 React.createElement(
   'div',
   {
@@ -51,7 +51,7 @@ React.createElement(
 );
 ```
 
-JSX는 내부의 중괄호 안에 JavaScript 표현식을 사용할 수 있다. React 엘리먼트는 JS 객체이며 변수에 저장하거나 프로그램 내부에서 전달할 수 있다.
+JSX는 내부의 중괄호 안에 JS 표현식을 사용할 수 있다. React 엘리먼트는 JS 객체이며 변수에 저장하거나 프로그램 내부에서 전달할 수 있다.
 
 ## 초기 코드 살펴보기
 
@@ -63,7 +63,7 @@ JSX는 내부의 중괄호 안에 JavaScript 표현식을 사용할 수 있다. 
 Square에 `value` prop을 전달할 수 있게 Board의 renderSquare 함수의 반환값을 `<Square value={i} />`로 수정한다.  
 값을 표시하기 위해 Square의 render 함수에서 `{/* TODO */}`를 `{this.props.value}`로 수정한다.
 
-```JavaScript
+```JS
 class Square extends React.Component {
   render() {
     return <button className="square">{this.props.value}</button>;
@@ -106,7 +106,7 @@ class Board extends React.Component {
 
 Square 컴포넌트를 클릭하면 X가 체크되도록 만들기
 
-```JavaScript
+```JS
 class Square extends React.Component {
   constructor(props) { // 클래스에 생성자를 추가하여 state 초기화
     super(props);
@@ -120,7 +120,7 @@ class Square extends React.Component {
 
 > 모든 React 컴포넌트 클래스는 생성자를 가질 때 super(props) 호출 구문부터 작성해야한다.
 
-```JavaScript
+```JS
 class Square extends React.Component {
   constructor(props) {
     super(props);
@@ -143,3 +143,63 @@ class Square extends React.Component {
 click 이벤트 핸들러를 `{() => this.setState({ value: 'X' })}`로 변경</br></br>
 
 Square의 render 함수 내부에서 이벤트 발생 시에 this.setState를 호출해 클릭될 때마다 Square가 다시 렌더링되도록 React에 알릴 수 있다.
+
+# 게임 완성하기
+
+## State 끌어올리기
+
+게임의 State를 자식 컴포넌트인 Square에서 유지하고 있다. 각각의 Square가 아니라 부모 컴포넌트 Board에서 게임의 상태를 관리하도록 하는 것이 가장 좋은 방법이다. 여러개의 자식으로부터 데이터를 모으거나 두 개의 자식 컴포넌트들이 서로 통신하게 하려면 부모 컴포넌트에 공유 state를 정의해야 한다.</br>
+
+```JS
+class Board extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      squares: Array(9).fill(null),
+    };
+  }
+}
+```
+
+Board에 생성자를 추가하고 9개의 사각형을 만드는 9개의 null 배열로 초기 state 생성
+
+```JS
+renderSquare(i) {
+    return (
+      <Square
+        value={this.state.squares[i]}
+        onClick={() => this.handleClick(i)}
+      />
+    );
+  }
+```
+
+Board에서 Square로 value prop, onClick prop을 전달
+
+```JS
+class Square extends React.Component {
+  render() {
+    return (
+      <button className="square" onClick={() => this.props.onClick()}>
+        {this.props.value}
+      </button>
+    );
+  }
+}
+```
+
+1. Square의 render 함수 내부의 this.state.value를 this.props.value로 수정한다.
+2. Square의 render 함수 내부의 this.setState()를 this.props.onClick()으로 수정한다.
+3. Square는 게임의 상태를 유지할 필요가 없기 때문에 생성자를 제거한다.
+
+```JS
+  handleClick(i) {
+    const squares = this.state.squares.slice();
+    squares[i] = 'X';
+    this.setState({ squares: squares });
+  }
+```
+
+Square를 클릭하면 this.props.onClick()을 호출하고, 이는 Board에서 정의 되었다. Board에서 넘겨받은 onClick함수는 handleClick(i)이므로 handleClick 함수를 작성한다.
+
+> Square 컴포넌트는 이제 state를 유지하지 않으며 Board 컴포넌트에서 값을 받아 클릭될 때 Board로 정보를 전달한다. React에서는 Square 컴포넌트를 `제어되는 컴포넌트` 라고 한다.
