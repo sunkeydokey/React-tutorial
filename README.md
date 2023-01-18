@@ -257,3 +257,201 @@ Board의 초기 state에 xIsNext를 true로 설정한 후 handleClick이 호출 
 ## 승자 결정하기
 
 로직에 따른 코드 수정, 이미 클릭한 Square를 클릭하면 무시하도록 수정
+
+# 시간여행 추가하기
+
+## 동작에 대한 기록 저장하기
+
+square 배열을 불변 객체로 취급하고 history에 slice()를 사용해 만들어지는 복사본을 저장한다.
+
+## 다시 State 끌어올리기
+
+[State 끌어올리기](##State-끌어올리기)에서 처럼 Game 컴포넌트에서 history state와 square state를 모두 유지하도록 끌어올린다.
+
+```JS
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: [{ squares: Array(9).fill(null) }],
+      xIsNext: true,
+    };
+```
+
+```JS
+  renderSquare(i) {
+    return (
+      <Square
+        value={this.props.squares[i]}
+        onClick={() => this.props.onClick(i)}
+      />
+    );
+  }
+```
+
+1. Board에서 생성자 제거
+2. Board의 renderSquare 안의 this.state.squares[i]를 this.props.squares[i]로 수정
+3. Board의 renderSquare 안의 this.handleClick(i)을 this.props.onClick(i)으로 수정
+
+```JS
+  render() {
+    const history = this.state.history;
+    const current = history[history.length - 1];
+    const winner = calculateWinner(current.squares);
+    let status;
+    if (winner) {
+      status = 'Winner: ' + winner;
+    } else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+    }
+
+    return (
+      <div className="game">
+        <div className="game-board">
+          <Board
+            squares={current.squares}
+            onClick={(i) => this.handleClick(i)}
+          />
+        </div>
+        <div className="game-info">
+          <div>{status}</div>
+          <ol>{/* TODO */}</ol>
+        </div>
+      </div>
+    );
+  }
+```
+
+Game 컴포넌트의 render 함수가 최신 state를 업데이트. Game 컴포넌트가 게임의 상태를 렌더링하게 되어 Board의 render함수에서 중복된 코드를 제거할 수 있다. 또한 handleClick 함수도 Game 컴포넌트로 옮겨주고 Game 컴포넌트의 state 구성에 따라 수정한다.
+
+```JS
+  handleClick(i) {
+    const history = this.state.history;
+    const current = history[history.length - 1];
+    const squares = current.squares.slice();
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history: history.concat([{
+        squares: squares,
+      }]),
+      xIsNext: !this.state.xIsNext,
+    });
+  }
+```
+
+## 과거의 이동 표시하기
+
+```JS
+render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ? `Go to move #${move}` : 'Go to game start';
+      return (
+        <li>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    });
+
+    let status;
+    ...
+
+    return (
+      <div className="game">
+        ...
+        <div className="game-info">
+          <div>{status}</div>
+          <ol>{moves}</ol>
+        </div>
+      </div>
+    );
+  }
+}
+```
+
+`Array.map((value, index)=>{})`를 사용해 현재 history 값인 step과 인덱스인 move를 참조한다. 게임 시작 시 move(index)는 0 이므로 false로 변환되어 'Go to game start'가 첫번째 li 요소로 추가될 것이고, 클릭마다 버튼을 가진 li 요소를 추가한다.
+
+## Key 선택하기
+
+개발자 콘솔을 보면 li 요소들이 추가되면서부터 key prop에 관한 경고메세지가 출력된다. React는 li들 간의 순서, 추가, 제거 등 프로그래머가 의도한 바를 바로 알지 못하기 때문에 key prop을 지정하여 각 li가 서로 다르다는 것을 의도적으로 알려주어야 한다.  
+전역적으로 고유한 key까지는 필요없으나 컴포넌트와 관련 아이템 사이에서는 고유한 값을 가져야 한다.
+
+```JS
+const moves = history.map((step, move) => {
+      const desc = move ? `Go to move #${move}` : 'Go to game start';
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    });
+```
+
+현재 코드에서 move는 이동에 따라 순차적이고 고유한 숫자를 가진다. 따라서 li요소에 key={move}를 추가하여 prop을 넘겨주면 배열 요소에 고유한 key prop이 생긴다.
+
+## 시간 여행 구현하기
+
+```JS
+class Game extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: [{
+        squares: Array(9).fill(null),
+      }],
+      stepNumber: 0,
+      xIsNext: true,
+    };
+  }
+```
+
+Game 컴포넌트의 state에 stepNumber를 추가해준다.
+
+```JS
+  jumpTo(step) {
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    });
+  }
+```
+
+step이 짝수인 경우 X가 다시 턴을 받는 게임이므로 돌아간 step에서 다시 같은 플레이어가 차례를 받을 수 있도록 한다.
+
+```JS
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
+    const current = history[history.length - 1];
+    const squares = current.squares.slice();
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history: history.concat([{
+        squares: squares
+      }]),
+      stepNumber: history.length,
+      xIsNext: !this.state.xIsNext,
+    });
+  }
+```
+
+this.state.history를 this.state.history.slice(0, this.state.stepNumber + 1)로 수정하여 뒤로 돌아간 후 새로운 수를 두었을 때 그 이후의 기록을 모두 삭제할 수 있도록 한다.
+
+```JS
+  render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    ...
+  }
+```
+
+Game 의 render함수를 수정하여 stepNumber에 맞는 이동을 렌더링하도록 한다.
