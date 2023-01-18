@@ -203,3 +203,57 @@ class Square extends React.Component {
 Square를 클릭하면 this.props.onClick()을 호출하고, 이는 Board에서 정의 되었다. Board에서 넘겨받은 onClick함수는 handleClick(i)이므로 handleClick 함수를 작성한다.
 
 > Square 컴포넌트는 이제 state를 유지하지 않으며 Board 컴포넌트에서 값을 받아 클릭될 때 Board로 정보를 전달한다. React에서는 Square 컴포넌트를 `제어되는 컴포넌트` 라고 한다.
+
+## 함수 컴포넌트
+
+Square를 함수 컴포넌트로 변경하기
+
+함수 컴포넌트를 통해 더 간단하게 컴포넌트를 작성할 수 있다. state를 따로 지정하지 않고 render함수만을 가진다.
+
+```JS
+function Square(props) {
+  return (
+    <button className="square" onClick={props.onClick}>
+      {props.value}
+    </button>
+  );
+}
+```
+
+## 순서 만들기
+
+```JS
+  constructor(props) {
+    super(props);
+    this.state = {
+      squares: Array(9).fill(null),
+      xIsNext: true,
+    };
+  }
+
+  handleClick(i) {
+    const squares = this.state.squares.slice();
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      squares: squares,
+      xIsNext: !this.state.xIsNext,
+    });
+  }
+```
+
+Board의 초기 state에 xIsNext를 true로 설정한 후 handleClick이 호출 될 때마다 Boolean 값을 바꾸도록 수정하여 클릭마다 순서를 바꾸도록 할 수 있다.
+
+```JS
+  render() {
+    const status = `Next player: ${this.state.xIsNext ? 'X' : 'O'}`;
+
+    return (...
+    )
+  }
+```
+
+박스 상단의 Next player 도 변경되도록 render 함수도 수정
+
+## 승자 결정하기
+
+로직에 따른 코드 수정, 이미 클릭한 Square를 클릭하면 무시하도록 수정
